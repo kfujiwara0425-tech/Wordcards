@@ -33,4 +33,166 @@ textarea{
   border-radius:10px;
   padding:20px;
   margin-top:20px;
-  font-size
+  font-size:24px;
+  min-height:100px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  box-shadow:0 0 10px rgba(0,0,0,0.1);
+  cursor:pointer;
+  text-align:center;
+  touch-action:manipulation;
+}
+.nav{margin-top:10px;}
+.nav button{
+  padding:8px 12px;
+  margin-right:6px;
+  font-size:16px;
+}
+#counter{font-size:14px;}
+.msg-small{
+  font-size:12px;
+  color:#666;
+  margin-top:4px;
+}
+</style>
+</head>
+<body>
+
+<h3>単語入力（ExcelでA列=表, B列=裏 → 2列まとめてコピーして貼り付け）</h3>
+<textarea id="input"></textarea><br>
+<button id="generate">カード生成</button>
+<div class="msg-small">※ TAB（エクセルの2列コピー）専用。スペース区切りは不可。</div>
+
+<div class="card" id="card">まだカードが生成されていません</div>
+
+<div class="nav">
+  <button id="prev">前へ</button>
+  <span id="counter">0 / 0</span>
+  <button id="next">次へ</button>
+</div>
+
+<script>
+var STORAGE_KEY = "wordcards_text";
+
+var cards = [];
+var index = 0;    // 今どの単語か
+var front = true; // true=表, false=訳
+
+var input    = document.getElementById("input");
+var generate = document.getElementById("generate");
+var card     = document.getElementById("card");
+var prevBtn  = document.getElementById("prev");
+var nextBtn  = document.getElementById("next");
+var counter  = document.getElementById("counter");
+
+// ExcelのA・B列（TAB区切り）専用パーサ
+function parse(text){
+  var lines = text.split(/\r?\n/);
+  var result = [];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    if (!line) continue;
+    line = line.replace(/^\s+|\s+$/g,"");
+
+    var tabPos = line.indexOf("\t");
+    if (tabPos === -1) continue;
+
+    var frontText = line.substring(0, tabPos).replace(/^\s+|\s+$/g,"");
+    var backText  = line.substring(tabPos + 1).replace(/^\s+|\s+$/g,"");
+
+    if (frontText && backText) {
+      result.push({ f: frontText, b: backText });
+    }
+  }
+  return result;
+}
+
+function show(){
+  if (!cards.length) {
+    card.innerHTML = "入力を読み取れませんでした。<br>Excelの2列コピペで貼り付けてください。";
+    counter.textContent = "0 / 0";
+    return;
+  }
+  var c = cards[index];
+  card.textContent = front ? c.f : c.b;
+  counter.textContent = (index + 1) + " / " + cards.length;
+}
+
+generate.onclick = function(){
+  var text = input.value || "";
+  cards = parse(text);
+  index = 0;
+  front = true;
+  show();
+
+  // 入力内容を保存
+  try {
+    localStorage.setItem(STORAGE_KEY, text);
+  } catch(e) {}
+};
+
+// タップ仕様：1回目＝訳表示、2回目＝次の単語の表
+card.onclick = function(){
+  if (!cards.length) return;
+
+  if (front) {
+    // 表 → 訳
+    front = false;
+    show();
+  } else {
+    // 訳 → 次の単語の表（最後なら先頭へ）
+    if (index < cards.length - 1) {
+      index++;
+    } else {
+      index = 0;
+    }
+    front = true;
+    show();
+  }
+};
+
+// 前へ／次へ
+prevBtn.onclick = function(){
+  if (!cards.length) return;
+  if (index > 0) {
+    index--;
+  } else {
+    index = cards.length - 1;
+  }
+  front = true;
+  show();
+};
+
+nextBtn.onclick = function(){
+  if (!cards.length) return;
+  if (index < cards.length - 1) {
+    index++;
+  } else {
+    index = 0;
+  }
+  front = true;
+  show();
+};
+
+// 起動時：保存していた入力を復元
+window.onload = function(){
+  var saved = "";
+  try {
+    saved = localStorage.getItem(STORAGE_KEY) || "";
+  } catch(e) {}
+
+  if (saved && saved.replace(/^\s+|\s+$/g,"") !== "") {
+    input.value = saved;
+  } else {
+    // 初回だけサンプル
+    input.value =
+      "普及する\tspread / become widespread\n" +
+      "lean in\t前向きに関わる／積極的に踏み込む\n" +
+      "succinct\t簡潔な";
+  }
+};
+</script>
+
+</body>
+</html>
