@@ -1,176 +1,138 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>Flashcards 3-step</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <style>
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      -webkit-text-size-adjust: 100%;
-      background: #f5f5f7;
-    }
-    body {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 16px;
-      gap: 12px;
-    }
-    h1 {
-      margin: 4px 0 8px;
-      font-size: 18px;
-      font-weight: 600;
-      text-align: center;
-    }
-    #wordInput {
-      width: 100%;
-      max-width: 800px;
-      height: 140px;
-      padding: 8px;
-      font-size: 14px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      resize: vertical;
-    }
-    #generateBtn {
-      padding: 10px 18px;
-      font-size: 14px;
-      border-radius: 999px;
-      border: none;
-      background: #007aff;
-      color: #fff;
-      cursor: pointer;
-      touch-action: manipulation;
-    }
-    #generateBtn:active {
-      opacity: 0.7;
-    }
-    #card {
-      margin-top: 8px;
-      width: 100%;
-      max-width: 800px;
-      min-height: 180px;
-      border-radius: 16px;
-      background: #ffffff;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      font-size: 20px;
-      text-align: center;
-      cursor: pointer;
-      user-select: none;
-      touch-action: manipulation;
-      word-break: break-word;
-    }
-    #status {
-      margin-top: 4px;
-      font-size: 12px;
-      color: #666;
-      text-align: center;
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Word Card</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #card {
+            width: 90%;
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 40px 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            font-size: 24px;
+            min-height: 120px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .btn-area {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        #uploadArea {
+            margin: 20px auto;
+        }
+    </style>
 </head>
 <body>
-  <h1>Flashcards 3-step（表→訳→例文）</h1>
 
-  <textarea
-    id="wordInput"
-    placeholder="例）&#10;どうせなら〜するか／〜した方がいい[TAB]might as well + verb[TAB]We might as well start now.&#10;どちらかと言えば／むしろ[TAB]If anything[TAB]If anything, it made things worse."
-  ></textarea>
+    <h2>Word Card</h2>
 
-  <button id="generateBtn">カード生成</button>
+    <!-- ▼ カード表示領域 -->
+    <div id="card">Tap to start</div>
 
-  <div id="card">ここにカードが表示されます</div>
-  <p id="status">テキストを貼り付けて「カード生成」を押してください。</p>
+    <!-- ▼ Back / Next ボタン -->
+    <div class="btn-area">
+        <button id="prevBtn">Back</button>
+        <button id="nextBtn">Next</button>
+    </div>
 
-  <script>
-    let cards = [];
-    let currentIndex = 0;
-    let currentStage = 0; // 0 = 表, 1 = 訳, 2 = 例文
+    <!-- ▼ 単語リスト読み込み（コピペ用） -->
+    <textarea id="inputText" placeholder="ここに3カラムTSVを貼る" style="width:90%;height:120px;margin-top:20px;"></textarea><br>
+    <button onclick="loadCardsFromText()">Load Cards</button>
 
-    function parseCards(rawText) {
-      return rawText
-        .split(/\r?\n/)
-        .map(line => line.trim())
-        .filter(line => line.length > 0)
-        .map(line => {
-          const parts = line.split("\t");
-          const front = parts[0] || "";
-          const back = parts[1] || "";
-          const example = parts[2] || "";
-          return { front, back, example };
-        });
-    }
+    <script>
+        let cards = [];
+        let currentIndex = 0;
+        let currentStage = 0;  // 0=表, 1=訳, 2=例文
 
-    function loadCards() {
-      const rawText = document.getElementById("wordInput").value || "";
-      cards = parseCards(rawText);
-      currentIndex = 0;
-      currentStage = 0;
-      showCard();
-    }
+        function loadCardsFromText() {
+            const text = document.getElementById("inputText").value.trim();
+            if (!text) return;
 
-    function showCard() {
-      const cardEl = document.getElementById("card");
-      const statusEl = document.getElementById("status");
+            const lines = text.split("\n");
+            cards = lines.map(line => {
+                const parts = line.split("\t");
+                return {
+                    front: parts[0] || "",
+                    back: parts[1] || "",
+                    example: parts[2] || ""
+                };
+            });
 
-      if (!cards.length) {
-        cardEl.innerText = "カードがありません";
-        statusEl.innerText = "テキストを貼り付けて「カード生成」を押してください。";
-        return;
-      }
-
-      const card = cards[currentIndex];
-      let displayText = "";
-
-      if (currentStage === 0) {
-        displayText = card.front;
-        statusEl.innerText = `カード ${currentIndex + 1} / ${cards.length}：1タップ目（表）`;
-      } else if (currentStage === 1) {
-        displayText = card.back;
-        statusEl.innerText = `カード ${currentIndex + 1} / ${cards.length}：2タップ目（訳）`;
-      } else if (currentStage === 2) {
-        if (card.example && card.example.trim() !== "") {
-          displayText = card.example;
-          statusEl.innerText = `カード ${currentIndex + 1} / ${cards.length}：3タップ目（例文）`;
-        } else {
-          // 例文がない場合は次のカードへ
-          currentStage = 0;
-          currentIndex = (currentIndex + 1) % cards.length;
-          showCard();
-          return;
+            currentIndex = 0;
+            currentStage = 0;
+            showCard();
         }
-      }
 
-      cardEl.innerText = displayText;
-    }
+        function showCard() {
+            if (cards.length === 0) return;
 
-    function nextStage() {
-      if (!cards.length) return;
+            const c = cards[currentIndex];
+            let txt = "";
 
-      if (currentStage < 2) {
-        currentStage += 1;
-      } else {
-        currentStage = 0;
-        currentIndex = (currentIndex + 1) % cards.length;
-      }
-      showCard();
-    }
+            if (currentStage === 0) txt = c.front;
+            else if (currentStage === 1) txt = c.back;
+            else txt = c.example;
 
-    document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("generateBtn").addEventListener("click", loadCards);
-      document.getElementById("card").addEventListener("click", nextStage);
-    });
-  </script>
+            document.getElementById("card").innerText = txt;
+        }
+
+        function nextStage() {
+            if (cards.length === 0) return;
+
+            if (currentStage < 2) {
+                currentStage++;
+            } else {
+                currentStage = 0;
+                currentIndex = (currentIndex + 1) % cards.length;
+            }
+            showCard();
+        }
+
+        document.getElementById("card").addEventListener("click", nextStage);
+
+        // ▼ Back ボタン
+        document.getElementById("prevBtn").addEventListener("click", () => {
+            if (cards.length === 0) return;
+            currentStage = 0;
+            currentIndex = (currentIndex - 1 + cards.length) % cards.length;
+            showCard();
+        });
+
+        // ▼ Next ボタン
+        document.getElementById("nextBtn").addEventListener("click", () => {
+            if (cards.length === 0) return;
+            currentStage = 0;
+            currentIndex = (currentIndex + 1) % cards.length;
+            showCard();
+        });
+    </script>
+
 </body>
 </html>
